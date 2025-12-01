@@ -51,11 +51,37 @@ Common schedule examples:
 
 ### Backup Retention
 
+#### Daily Backups
+
 ```bash
-BACKUP_RETENTION_DAYS=7         # Keep backups for 7 days (default: 7)
+BACKUP_RETENTION_DAYS=7         # Keep daily backups for 7 days (default: 7)
 ```
 
 Set to `0` to disable automatic cleanup (not recommended).
+
+#### Weekly Backups (Optional)
+
+Enable weekly backups to keep long-term snapshots:
+
+```bash
+BACKUP_KEEP_WEEKLY=true                  # Enable weekly backup retention (default: false)
+BACKUP_WEEKLY_RETENTION_DAYS=30          # Keep weekly backups for 30 days (default: 30, 0 = forever)
+BACKUP_WEEKLY_DAY=0                      # Day of week for weekly backups (default: 0 = Sunday)
+```
+
+**How it works:**
+- On the configured day (e.g., Sunday), backups are marked as "weekly" with a `-weekly` suffix
+- Weekly backups are kept separately from daily backups
+- Set `BACKUP_WEEKLY_RETENTION_DAYS=0` to keep weekly backups forever
+- `BACKUP_WEEKLY_DAY`: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+
+**Example:** Keep daily backups for 7 days, but keep Sunday backups for 90 days:
+```bash
+BACKUP_RETENTION_DAYS=7
+BACKUP_KEEP_WEEKLY=true
+BACKUP_WEEKLY_RETENTION_DAYS=90
+BACKUP_WEEKLY_DAY=0
+```
 
 ### Databases to Backup
 
@@ -83,14 +109,28 @@ docker compose up -d
 
 ### Viewing Backup Logs
 
+View container startup logs:
+
 ```bash
 docker logs ac-backup-cron
 ```
 
-Or follow logs in real-time:
+Or follow container logs in real-time:
 
 ```bash
 docker logs -f ac-backup-cron
+```
+
+View detailed backup execution logs (stored in `env/dist/logs/backup.log`):
+
+```bash
+tail -f env/dist/logs/backup.log
+```
+
+Or from within the container:
+
+```bash
+docker exec ac-backup-cron tail -f /azerothcore/logs/backup.log
 ```
 
 ### Manual Backup
@@ -100,6 +140,29 @@ To run a backup manually without waiting for the scheduled time:
 ```bash
 docker exec ac-backup-cron /scripts/backup-databases.sh
 ```
+
+**Windows PowerShell:**
+```powershell
+.\scripts\local\win\backup-now.ps1
+```
+
+### Manual Cleanup
+
+To manually run the cleanup process and remove old backups:
+
+```bash
+docker exec ac-backup-cron /scripts/cleanup-backups.sh
+```
+
+**Windows PowerShell:**
+```powershell
+.\scripts\local\win\cleanup-backups.ps1
+```
+
+This will:
+- Remove daily backups older than `BACKUP_RETENTION_DAYS`
+- Remove weekly backups older than `BACKUP_WEEKLY_RETENTION_DAYS` (if enabled)
+- Display cleanup statistics
 
 ### Listing Backups
 
@@ -169,7 +232,12 @@ Example: `acore_world_20250130_020001.sql.gz`
 
 3. Check backup logs:
    ```bash
-   docker exec ac-backup-cron cat /var/log/backup.log
+   tail -f env/dist/logs/backup.log
+   ```
+
+   Or from within the container:
+   ```bash
+   docker exec ac-backup-cron cat /azerothcore/logs/backup.log
    ```
 
 ### Insufficient Privileges Error

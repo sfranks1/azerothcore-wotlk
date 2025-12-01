@@ -16,7 +16,8 @@ CREATE USER 'backup'@'%' IDENTIFIED BY 'BACKUP_PASSWORD_PLACEHOLDER';
 -- REPLICATION CLIENT: Required for --master-data option if needed
 -- EVENT: Required to dump events
 -- TRIGGER: Required to dump triggers
-GRANT SELECT, LOCK TABLES, SHOW VIEW, RELOAD, REPLICATION CLIENT, EVENT, TRIGGER ON *.* TO 'backup'@'%';
+-- PROCESS: Required to dump tablespaces
+GRANT SELECT, LOCK TABLES, SHOW VIEW, RELOAD, REPLICATION CLIENT, EVENT, TRIGGER, PROCESS ON *.* TO 'backup'@'%';
 
 -- Apply privileges
 FLUSH PRIVILEGES;

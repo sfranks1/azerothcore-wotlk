@@ -12,6 +12,8 @@ BACKUP_USER="${BACKUP_USER:-backup}"
 BACKUP_PASSWORD="${BACKUP_PASSWORD:-backup_password}"
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+BACKUP_KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-false}"
+BACKUP_WEEKLY_DAY="${BACKUP_WEEKLY_DAY:-0}"
 
 # Databases to backup
 DATABASES="${BACKUP_DATABASES:-acore_auth acore_world acore_characters acore_playerbots}"
@@ -22,6 +24,23 @@ mkdir -p "${BACKUP_DIR}"
 # Generate timestamp for backup files
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DATE=$(date +%Y-%m-%d)
+DAY_OF_WEEK=$(date +%u)
+
+# Determine if this is a weekly backup
+# Day of week: 1=Monday, 7=Sunday (using %u)
+# BACKUP_WEEKLY_DAY: 0=Sunday, 1=Monday, etc. (convert to match)
+WEEKLY_DAY_CONVERTED=$((BACKUP_WEEKLY_DAY == 0 ? 7 : BACKUP_WEEKLY_DAY))
+IS_WEEKLY="false"
+WEEKLY_SUFFIX=""
+
+echo "[$(date)] Today is day ${DAY_OF_WEEK} of the week"
+echo "[$(date)] Configured weekly backup day is ${WEEKLY_DAY_CONVERTED}"
+
+if [ "${BACKUP_KEEP_WEEKLY}" = "true" ] && [ "${DAY_OF_WEEK}" = "${WEEKLY_DAY_CONVERTED}" ]; then
+    IS_WEEKLY="true"
+    WEEKLY_SUFFIX="-weekly"
+    echo "[$(date)] This is a WEEKLY backup (will be kept longer)"
+fi
 
 echo "[$(date)] Starting database backup..."
 
@@ -29,7 +48,7 @@ echo "[$(date)] Starting database backup..."
 for DB in $DATABASES; do
     echo "[$(date)] Backing up database: ${DB}"
 
-    BACKUP_FILE="${BACKUP_DIR}/${DB}_${TIMESTAMP}.sql.gz"
+    BACKUP_FILE="${BACKUP_DIR}/${DB}_${TIMESTAMP}${WEEKLY_SUFFIX}.sql.gz"
 
     # Perform backup with compression
     if mysqldump \
@@ -55,13 +74,11 @@ for DB in $DATABASES; do
     fi
 done
 
-# Clean up old backups
-if [ "${BACKUP_RETENTION_DAYS}" -gt 0 ]; then
-    echo "[$(date)] Cleaning up backups older than ${BACKUP_RETENTION_DAYS} days..."
-
-    find "${BACKUP_DIR}" -name "*.sql.gz" -type f -mtime +${BACKUP_RETENTION_DAYS} -delete
-
-    echo "[$(date)] Cleanup complete"
+# Run cleanup script
+if [ -x "/scripts/cleanup-backups.sh" ]; then
+    /scripts/cleanup-backups.sh
+else
+    echo "[$(date)] Warning: cleanup-backups.sh not found or not executable"
 fi
 
 echo "[$(date)] Backup process completed successfully"

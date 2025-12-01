@@ -8,10 +8,11 @@ set -e
 echo "[$(date)] Starting backup service initialization..."
 
 # Install cron if not already installed
-if ! command -v cron &> /dev/null; then
-    echo "[$(date)] Installing cron..."
-    apt-get update
-    apt-get install -y cron
+# MySQL 8.4 uses Oracle Linux which uses microdnf
+if ! command -v crond &> /dev/null; then
+    echo "[$(date)] Installing cronie..."
+    microdnf install -y cronie
+    microdnf clean all
 fi
 
 # Make backup scripts executable
@@ -20,6 +21,14 @@ chmod +x /scripts/*.sh
 # Initialize backup user in database
 echo "[$(date)] Initializing backup user..."
 /scripts/init-backup-user.sh
+
+# Set log file location
+BACKUP_LOG_DIR="${BACKUP_LOG_DIR:-/var/log}"
+BACKUP_LOG_FILE="${BACKUP_LOG_DIR}/backup.log"
+
+# Create log directory and file
+mkdir -p "${BACKUP_LOG_DIR}"
+touch "${BACKUP_LOG_FILE}"
 
 # Generate crontab with current environment variables
 CRONTAB_FILE="/etc/cron.d/backup-cron"
@@ -43,7 +52,7 @@ BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS}
 BACKUP_DATABASES=${BACKUP_DATABASES}
 
 # Backup schedule
-${BACKUP_SCHEDULE} root /scripts/backup-databases.sh >> /var/log/backup.log 2>&1
+${BACKUP_SCHEDULE} root /scripts/backup-databases.sh >> ${BACKUP_LOG_FILE} 2>&1
 
 # Empty line required at end of crontab
 EOF
@@ -54,14 +63,12 @@ chmod 0644 "${CRONTAB_FILE}"
 # Load crontab
 crontab "${CRONTAB_FILE}"
 
-# Create log file
-touch /var/log/backup.log
-
 echo "[$(date)] Backup service initialized successfully"
 echo "[$(date)] Backup schedule: ${BACKUP_SCHEDULE}"
 echo "[$(date)] Backup retention: ${BACKUP_RETENTION_DAYS} days"
 echo "[$(date)] Databases to backup: ${BACKUP_DATABASES}"
+echo "[$(date)] Backup log file: ${BACKUP_LOG_FILE}"
 echo "[$(date)] Starting cron daemon..."
 
 # Start cron in foreground and tail the log
-cron && tail -f /var/log/backup.log
+crond && tail -f "${BACKUP_LOG_FILE}"

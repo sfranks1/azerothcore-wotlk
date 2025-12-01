@@ -20,7 +20,7 @@ services:
         source: ac-database
         target: /var/lib/mysql
       - type: bind
-        source: /data/sql/ac-backups/
+        source: ${DOCKER_VOL_BACKUPS:-./data/sql/ac-backups}
         target: /backups
     restart: unless-stopped
     healthcheck:
@@ -41,7 +41,11 @@ services:
       - BACKUP_USER=${BACKUP_USER:-backup}
       - BACKUP_PASSWORD=${BACKUP_PASSWORD:-backup_password}
       - BACKUP_DIR=/backups
+      - BACKUP_LOG_DIR=/azerothcore/logs
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+      - BACKUP_KEEP_WEEKLY=${BACKUP_KEEP_WEEKLY:-false}
+      - BACKUP_WEEKLY_RETENTION_DAYS=${BACKUP_WEEKLY_RETENTION_DAYS:-30}
+      - BACKUP_WEEKLY_DAY=${BACKUP_WEEKLY_DAY:-0}
       - BACKUP_DATABASES=${BACKUP_DATABASES:-acore_auth acore_world acore_characters acore_playerbots}
       - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
     volumes:
@@ -49,8 +53,9 @@ services:
         source: ./scripts/backup
         target: /scripts
       - type: bind
-        source: /data/sql/ac-backups/
+        source: ${DOCKER_VOL_BACKUPS:-./data/sql/ac-backups}
         target: /backups
+      - ${DOCKER_VOL_LOGS:-./env/dist/logs}:/azerothcore/logs:delegated
     command: /scripts/entrypoint.sh
     restart: unless-stopped
     depends_on:

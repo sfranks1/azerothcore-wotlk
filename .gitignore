@@ -21,6 +21,7 @@
 /apps/joiner
 /deps/deno
 /data/sql/custom/*
+/data/sql/ac-backups/*
 /src/server/scripts/Custom/*
 !/src/server/scripts/Custom/README.md
 
