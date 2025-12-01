@@ -248,6 +248,13 @@ RUN mkdir -pv /azerothcore/env/dist/Cameras \
               /azerothcore/env/dist/mmaps   \
               /azerothcore/env/dist/vmaps
 
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    libcurl4-openssl-dev \
+    nlohmann-json3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --chown=$DOCKER_USER:$DOCKER_USER --from=build \
   /azerothcore/env/dist/bin/map_extractor /azerothcore/env/dist/bin/map_extractor
 

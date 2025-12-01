@@ -19,12 +19,43 @@ services:
       - type: volume
         source: ac-database
         target: /var/lib/mysql
+      - type: bind
+        source: /data/sql/ac-backups/
+        target: /backups
     restart: unless-stopped
     healthcheck:
       test: "/usr/bin/mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --execute \"SHOW DATABASES;\""
       interval: 5s
       timeout: 10s
       retries: 40
+
+  ac-backup-cron:
+    container_name: ac-backup-cron
+    image: mysql:8.4
+    networks:
+      - ac-network
+    environment:
+      - DB_HOST=ac-database
+      - DB_PORT=3306
+      - DB_ROOT_PASSWORD=${DOCKER_DB_ROOT_PASSWORD:-password}
+      - BACKUP_USER=${BACKUP_USER:-backup}
+      - BACKUP_PASSWORD=${BACKUP_PASSWORD:-backup_password}
+      - BACKUP_DIR=/backups
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+      - BACKUP_DATABASES=${BACKUP_DATABASES:-acore_auth acore_world acore_characters acore_playerbots}
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
+    volumes:
+      - type: bind
+        source: ./scripts/backup
+        target: /scripts
+      - type: bind
+        source: /data/sql/ac-backups/
+        target: /backups
+    command: /scripts/entrypoint.sh
+    restart: unless-stopped
+    depends_on:
+      ac-database:
+        condition: service_healthy
 
   ac-db-import:
     container_name: ac-db-import
