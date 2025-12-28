@@ -107,3 +107,8 @@ local.properties
 # ==================
 .cache
 compile_commands.json
+
+
+/doc/.notes
+cloudflared-config.yml
+*.pem
