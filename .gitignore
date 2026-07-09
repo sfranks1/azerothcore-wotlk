@@ -112,3 +112,4 @@ compile_commands.json
 /doc/.notes
 cloudflared-config.yml
 *.pem
+/scripts/logs/*
